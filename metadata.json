@@ -1,0 +1,9 @@
+{
+    "id": "OreoCafeBalatro",
+    "name": "Oreo Cafe Balatro",
+    "author": ["Mini Oreo", "Maxwell"],
+    "description": "A mod for Balatro",
+    "prefix": "ocafe",
+    "main_file": "main.lua",
+    "version": "0.1"
+}

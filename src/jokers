@@ -1,0 +1,4 @@
+local jokers_src = Steamodded.NFS.getDirectoryItems(Steamodded.current_mod.path.."src/jokers")
+for _, file in ipairs(jokers_src) do
+    assert(Steamodded.load_file("src/jokers/" .. file))()
+end
