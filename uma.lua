@@ -7,10 +7,7 @@
 --     Team Cannopus: nice_nature, matikanetannhauser, twin_turbo, ikuno_dictus
 --     Others:        agnes_tachyon, manhattan_cafe, jungle_pocket, tm_opera_o, meisho_doto,
 --                    matikanefukukitaru, rice_shower, haru_urara, agnes_digital
--- Art: uma_jokers.png    x=0..6 Spica (Special Week, Suzuka, Scarlet, Vodka, Gold Ship, Teio, McQueen)
---                        x=7..10 Cannopus (Nice Nature, Matikanetannhauser, Twin Turbo, Ikuno Dictus)
---                        x=11..19 Others (Tachyon, Cafe, Jungle Pocket, Opera O, Doto, Fukukitaru,
---                                         Rice Shower, Haru Urara, Digital)
+-- Art: the Jokers live in jokers.png (every Joker of the mod in one sheet, sorted by rarity, see main.lua).
 --      uma_tarots.png    x=0 Scout, 1 Goldship's Shenanigans, 2 Turbo's Charm, 3 Urara's Motivation,
 --                        4 Healthcare Coupon, 5 Shiraoki's Blessing, 6 Digital Fan Club
 --      uma_enhancements.png  x=0 Blessed          (all art is placeholder)
@@ -21,7 +18,6 @@
 ----------------------------------------------------------------
 -- ATLASES
 ----------------------------------------------------------------
-SMODS.Atlas { key = "uma_jokers",       path = "uma_jokers.png",       px = 71, py = 95 }
 SMODS.Atlas { key = "uma_tarots",       path = "uma_tarots.png",       px = 71, py = 95 }
 SMODS.Atlas { key = "uma_enhancements", path = "uma_enhancements.png", px = 71, py = 95 }
 
@@ -442,7 +438,7 @@ local function uma_joker(a)
 
     SMODS.Joker {
         key = a.id,
-        atlas = "uma_jokers",
+        atlas = "jokers",   -- the shared jokers.png declared in main.lua
         pos = { x = a.x, y = 0 },
         rarity = a.rarity,
         cost = a.cost,
@@ -492,7 +488,7 @@ end
 -- TEAM SPICA  (+50 Chips, +15 Mult base; Mejiro McQueen has her own)
 ----------------------------------------------------------------
 uma_joker {
-    id = "special_week", name = "Special Week", group = "spica", x = 0, rarity = 3, cost = 8,
+    id = "special_week", name = "Special Week", group = "spica", x = 47, rarity = 3, cost = 8,
     text = {
         "{C:attention}Base Chips and Mult X#5#{} if you",
         "own {C:attention}Silence Suzuka",
@@ -502,7 +498,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "silence_suzuka", name = "Silence Suzuka", group = "spica", x = 1, rarity = 3, cost = 8,
+    id = "silence_suzuka", name = "Silence Suzuka", group = "spica", x = 48, rarity = 3, cost = 8,
     text = {
         "{C:attention}Doubles{} Base Chips and Mult",
         "if she is activated first",
@@ -512,7 +508,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "daiwa_scarlet", name = "Daiwa Scarlet", group = "spica", x = 2, rarity = 2, cost = 6,
+    id = "daiwa_scarlet", name = "Daiwa Scarlet", group = "spica", x = 15, rarity = 2, cost = 6,
     text = {
         "{C:attention}Base Chips and Mult X#5#{} if you",
         "own {C:attention}Vodka",
@@ -522,7 +518,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "vodka", name = "Vodka", group = "spica", x = 3, rarity = 2, cost = 6,
+    id = "vodka", name = "Vodka", group = "spica", x = 16, rarity = 2, cost = 6,
     text = {
         "{C:attention}Base Chips and Mult X#5#{} if you",
         "own {C:attention}Daiwa Scarlet",
@@ -532,7 +528,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "gold_ship", name = "Gold Ship", group = "spica", x = 4, rarity = 2, cost = 6,
+    id = "gold_ship", name = "Gold Ship", group = "spica", x = 17, rarity = 2, cost = 6,
     text = {
         "{C:green}#5# in #6#{} chance each hand to {C:attention}dropkick",
         "an {C:attention}Uma Musume{} Joker: its Mult is {C:attention}doubled",
@@ -570,7 +566,7 @@ uma_joker {
 
 -- Injured: she scores nothing until the end of the round.
 uma_joker {
-    id = "tokai_teio", name = "Tokai Teio", group = "spica", x = 5, rarity = 3, cost = 8,
+    id = "tokai_teio", name = "Tokai Teio", group = "spica", x = 49, rarity = 3, cost = 8,
     text = {
         "{C:attention}Base Chips and Mult X#5#{} if you",
         "own {C:attention}Mejiro McQueen",
@@ -605,7 +601,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "mejiro_mcqueen", name = "Mejiro McQueen", group = "spica", x = 6, rarity = 3, cost = 10,
+    id = "mejiro_mcqueen", name = "Mejiro McQueen", group = "spica", x = 50, rarity = 3, cost = 10,
     chips = MCQUEEN_CHIPS, mult = MCQUEEN_MULT,
     text = {
         "Loses {C:chips}#5#{} Chips and {C:mult}#6#{} Mult at end",
@@ -628,7 +624,7 @@ uma_joker {
 -- Each hand she silences a random OTHER Joker (see the global hook above) and, in
 -- return, gives X10 base. With nobody to silence, she gives no bonus.
 uma_joker {
-    id = "nice_nature", name = "Nice Nature", group = "cannopus", x = 7, rarity = 3, cost = 8,
+    id = "nice_nature", name = "Nice Nature", group = "cannopus", x = 51, rarity = 3, cost = 8,
     text = {
         "Each hand, {C:attention}prevents{} the ability of a",
         "random other Joker and in return",
@@ -660,7 +656,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "matikanetannhauser", name = "Matikanetannhauser", group = "cannopus", x = 8, rarity = 2, cost = 6,
+    id = "matikanetannhauser", name = "Matikanetannhauser", group = "cannopus", x = 18, rarity = 2, cost = 6,
     text = {
         "{C:attention}Base Chips and Mult X#5#{} if you",
         "own {C:attention}Twin Turbo",
@@ -686,7 +682,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "twin_turbo", name = "Twin Turbo", group = "cannopus", x = 9, rarity = 2, cost = 6,
+    id = "twin_turbo", name = "Twin Turbo", group = "cannopus", x = 19, rarity = 2, cost = 6,
     text = {
         "{C:green}#5# in #6#{} chance for {C:attention}Base Chips",
         "{C:attention}and Mult X#7#{}, otherwise does nothing",
@@ -704,7 +700,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "ikuno_dictus", name = "Ikuno Dictus", group = "cannopus", x = 10, rarity = 2, cost = 5,
+    id = "ikuno_dictus", name = "Ikuno Dictus", group = "cannopus", x = 20, rarity = 2, cost = 5,
     text = {
         "{C:attention}Base Chips and Mult X#5#{} if you own",
         "no other {C:attention}Team Cannopus{} members",
@@ -720,7 +716,7 @@ uma_joker {
 ----------------------------------------------------------------
 -- Her bad rolls can be cancelled by Healthcare Coupons (G.GAME.ocafe_coupons).
 uma_joker {
-    id = "agnes_tachyon", name = "Agnes Tachyon", group = "other", x = 11, rarity = 3, cost = 8,
+    id = "agnes_tachyon", name = "Agnes Tachyon", group = "other", x = 52, rarity = 3, cost = 8,
     text = {
         "{C:attention}Base Chips and Mult X#5#{} with {C:attention}Manhattan Cafe",
         "{C:green}#6# in #7#{} chance for {C:attention}Base X#8#",
@@ -777,7 +773,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "manhattan_cafe", name = "Manhattan Cafe", group = "other", x = 12, rarity = 3, cost = 8,
+    id = "manhattan_cafe", name = "Manhattan Cafe", group = "other", x = 53, rarity = 3, cost = 8,
     text = {
         "{C:attention}Base Chips and Mult X#5#{} with {C:attention}Agnes Tachyon",
         "{C:green}#6# in #7#{} chance each hand to {C:red}self destruct",
@@ -797,7 +793,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "jungle_pocket", name = "Jungle Pocket", group = "other", x = 13, rarity = 2, cost = 6,
+    id = "jungle_pocket", name = "Jungle Pocket", group = "other", x = 21, rarity = 2, cost = 6,
     text = {
         "{C:attention}Base Chips and Mult X#5#{} with {C:attention}Agnes Tachyon",
         "or {C:attention}Manhattan Cafe{}, {C:attention}X#6#{} with both",
@@ -812,7 +808,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "tm_opera_o", name = "T.M Opera O", group = "other", x = 14, rarity = 3, cost = 8,
+    id = "tm_opera_o", name = "T.M Opera O", group = "other", x = 54, rarity = 3, cost = 8,
     text = {
         "{C:green}#5# in #6#{} chance for {C:attention}Base Chips and Mult X#7#",
         "{C:green}#8# in #9#{} chance instead if you own {C:attention}Meisho Doto",
@@ -834,7 +830,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "meisho_doto", name = "Meisho Doto", group = "other", x = 15, rarity = 2, cost = 6,
+    id = "meisho_doto", name = "Meisho Doto", group = "other", x = 22, rarity = 2, cost = 6,
     text = {
         "{C:green}#5# in #6#{} chance to {C:red}fall{} and not activate",
         "that hand",
@@ -860,7 +856,7 @@ uma_joker {
 -- Many independent rolls each hand. Board changes happen in `before`; the scoring
 -- results are saved in extra.fx / cash / win and paid out when she scores.
 uma_joker {
-    id = "matikanefukukitaru", name = "Matikanefukukitaru", group = "other", x = 16, rarity = 3, cost = 10,
+    id = "matikanefukukitaru", name = "Matikanefukukitaru", group = "other", x = 55, rarity = 3, cost = 10,
     text = {
         "{C:green}#5# in #6#{}: {C:attention}Base Chips and Mult X5",
         "{C:green}#7# in #8#{}: create {C:attention}Shiraoki's Blessing",
@@ -938,7 +934,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "rice_shower", name = "Rice Shower", group = "other", x = 17, rarity = 2, cost = 5,
+    id = "rice_shower", name = "Rice Shower", group = "other", x = 23, rarity = 2, cost = 5,
     text = {
         "{C:chips}+#5#{} more Chips per hand",
         "{C:chips}+#6#{} instead if you own {C:attention}Haru Urara",
@@ -948,7 +944,7 @@ uma_joker {
 }
 
 uma_joker {
-    id = "haru_urara", name = "Haru Urara", group = "other", x = 18, rarity = 2, cost = 5,
+    id = "haru_urara", name = "Haru Urara", group = "other", x = 24, rarity = 2, cost = 5,
     text = {
         "{C:mult}+#5#{} more Mult per hand",
         "{C:mult}+#6#{} instead if you own {C:attention}Rice Shower",
@@ -960,7 +956,7 @@ uma_joker {
 -- Triples the first Uma Musume Joker that activates after a successful roll (see the
 -- global hook above).
 uma_joker {
-    id = "agnes_digital", name = "Agnes Digital", group = "other", x = 19, rarity = 3, cost = 8,
+    id = "agnes_digital", name = "Agnes Digital", group = "other", x = 56, rarity = 3, cost = 8,
     text = {
         "{C:green}#5# in #6#{} chance each hand to {C:attention}triple{} the",
         "ability of the first {C:attention}Uma Musume{} Joker to activate",

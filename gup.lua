@@ -248,7 +248,7 @@ local function crew_joker(a)
 end
 
 crew_joker {
-    id = "miho", name = "Miho", x = 20, rarity = 3, cost = 8, chips = 50, mult = 10, odds = ARMOR_ODDS,
+    id = "miho", name = "Miho", x = 32, rarity = 3, cost = 8, chips = 50, mult = 10, odds = ARMOR_ODDS,
     info = PLOT_KEY,
     extra_text = {
         "{C:green}#5# in #6#{} chance to give a random",
@@ -260,11 +260,11 @@ crew_joker {
 }
 
 crew_joker {
-    id = "mako", name = "Mako", x = 5, rarity = 2, cost = 5, chips = 50, mult = 5,
+    id = "mako", name = "Mako", x = 6, rarity = 2, cost = 5, chips = 50, mult = 5,
 }
 
 crew_joker {
-    id = "yukari", name = "Yukari", x = 6, rarity = 2, cost = 5, chips = 50, mult = 5, odds = PRODUCTION_ODDS,
+    id = "yukari", name = "Yukari", x = 7, rarity = 2, cost = 5, chips = 50, mult = 5, odds = PRODUCTION_ODDS,
     info = PRODUCTION_KEY,
     extra_text = {
         "{C:green}#5# in #6#{} chance to create a",
@@ -280,11 +280,11 @@ crew_joker {
 }
 
 crew_joker {
-    id = "saori", name = "Saori", x = 7, rarity = 2, cost = 5, chips = 50, mult = 5,
+    id = "saori", name = "Saori", x = 8, rarity = 2, cost = 5, chips = 50, mult = 5,
 }
 
 crew_joker {
-    id = "hana", name = "Hana", x = 8, rarity = 2, cost = 5, chips = 50, mult = 5,
+    id = "hana", name = "Hana", x = 9, rarity = 2, cost = 5, chips = 50, mult = 5,
 }
 
 ----------------------------------------------------------------
@@ -293,7 +293,7 @@ crew_joker {
 SMODS.Joker {
     key = "maho",
     atlas = "jokers",
-    pos = { x = 21, y = 0 },
+    pos = { x = 33, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = true,
@@ -321,7 +321,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "erika",
     atlas = "jokers",
-    pos = { x = 9, y = 0 },
+    pos = { x = 10, y = 0 },
     rarity = 2,
     cost = 6,
     blueprint_compat = true,
@@ -354,7 +354,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "kay",
     atlas = "jokers",
-    pos = { x = 10, y = 0 },
+    pos = { x = 11, y = 0 },
     rarity = 2,
     cost = 6,
     blueprint_compat = true,
@@ -383,7 +383,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "anchovy",
     atlas = "jokers",
-    pos = { x = 22, y = 0 },
+    pos = { x = 34, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = true,
@@ -415,7 +415,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "pepperoni",
     atlas = "jokers",
-    pos = { x = 11, y = 0 },
+    pos = { x = 12, y = 0 },
     rarity = 2,
     cost = 5,
     blueprint_compat = true,
@@ -477,7 +477,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "katyusha",
     atlas = "jokers",
-    pos = { x = 23, y = 0 },
+    pos = { x = 35, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = true,
@@ -512,7 +512,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "nonna",
     atlas = "jokers",
-    pos = { x = 12, y = 0 },
+    pos = { x = 13, y = 0 },
     rarity = 2,
     cost = 6,
     blueprint_compat = true,
@@ -536,7 +536,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "darjeeling",
     atlas = "jokers",
-    pos = { x = 24, y = 0 },
+    pos = { x = 36, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = true,
@@ -578,7 +578,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "rosehip",
     atlas = "jokers",
-    pos = { x = 25, y = 0 },
+    pos = { x = 37, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = true,

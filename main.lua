@@ -6,12 +6,23 @@
 --                 j_ocafe_las_vegas, j_ocafe_uss_wichita, j_ocafe_score_chains,
 --                 j_ocafe_povidone_cookie, j_ocafe_mini_oreo, j_ocafe_maxwell
 --                 j_ocafe_mario_luigi
+--   Phantom Thieves (phantom.lua, all Legendary): j_ocafe_ren, morgana, ryuji, ann, yusuke, makoto, futaba, haru, kasumi
 --                 j_ocafe_russian_roulette, j_ocafe_bonus_coin, j_ocafe_printer, j_ocafe_d20
+--   Luck (luck.lua): j_ocafe_backlash, j_ocafe_optimist, j_ocafe_clown_car (Rare, jokers.png x=38..40)
+--   Azur Lane (everything lives in azur.lua, loaded at the bottom of this file): Eagle Union jokers
+--                 enterprise, yorktown, hornet, new_jersey, north_carolina, washington, laffey, fletcher
+--                 (jokers.png x=2, 14 and 41..46) and Tarots c_ocafe_construction_eu, c_ocafe_us_industrial_power
+--                 (tarots.png x=1, x=2), Spectral c_ocafe_grey_ghost (spectrals.png x=4),
+--                 and the Kamikaze mechanic (hits Ship Jokers during hands)
+--                 Boss Blinds bl_ocafe_siren_curse (no Ship Jokers) and bl_ocafe_fleet_training (only Ship Jokers)
+--                 (blinds.png rows y=1 and y=2)
 --   Items:        c_ocafe_syrup, c_ocafe_super_syrup, c_ocafe_ultra_syrup, c_ocafe_max_syrup
 --   Boosters:     p_ocafe_item_normal, p_ocafe_item_jumbo, p_ocafe_item_mega
 --   Seals:        ocafe_bomb, ocafe_snack, ocafe_star
 --   Tarots:       c_ocafe_encrustation, c_ocafe_omni_box
 --   Spectral:     c_ocafe_mini_oreo774, c_ocafe_maxwellthegamer99, c_ocafe_warp_pipe
+--                 c_ocafe_calling_card, c_ocafe_phone_a_friend (phantom.lua: create a Phantom Thief, random / your choice;
+--                 art in spectrals.png x=5 / x=6)
 --   Decks:        b_ocafe_mini_oreo_deck, b_ocafe_maxwell_deck
 --   Weapons:      c_ocafe_peashooter, spread, chaser, lobber, charge, roundabout,
 --                 crackshot, converge, twist_up
@@ -19,6 +30,12 @@
 --   Stacking:     stack.lua draws neighbouring Negative copies of a Joker as one stack (visual only)
 --   Papa's Counter: papas.lua adds an ORDERS button to the shop (customers = Jimbo in outfits) and a
 --                 KITCHEN minigame during the next round (Pizzeria/Scooperia/Donuteria/Cupcakeria/Freezeria)
+--   Oreo RPG:     rpg.lua adds an "Oreo RPG" tab beside ORDERS in the shop: a turn-based RPG where a party of up to 5
+--                 Legendary Jokers fights for money (entry fee, tougher foes and bigger rewards after every clear)
+--   Arcade Games: arcade.lua adds an "Arcade Games" tab in the shop: Cookie Snake, Brick Breaker,
+--                 Flappy Jimbo and Whack-a-Jimbo, played for money and Gold-medal cards
+--   Map Deck:     map.lua adds b_ocafe_map_deck: pick a path each Ante (rounds, kitchen and RPG challenges,
+--                 optional shops)
 --   Girls und Panzer (everything lives in gup.lua, loaded at the bottom of this file):
 --                 m_ocafe_plot_armor, c_ocafe_panzer_vor, c_ocafe_production, and 16 jokers
 --                 (miho, mako, yukari, saori, hana, maho, erika, kay, anchovy, pepperoni,
@@ -30,7 +47,7 @@
 --                 mejiro_mcqueen), Team Cannopus (nice_nature, matikanetannhauser, twin_turbo, ikuno_dictus),
 --                 Others (agnes_tachyon, manhattan_cafe, jungle_pocket, tm_opera_o, meisho_doto,
 --                 matikanefukukitaru, rice_shower, haru_urara, agnes_digital)
---                 Art: uma_jokers.png / uma_tarots.png / uma_enhancements.png (placeholder)
+--                 Art: uma_tarots.png / uma_enhancements.png (placeholder)
 
 -- Crackshot needs Steamodded's Joker retriggering
 SMODS.current_mod.optional_features = { retrigger_joker = true }
@@ -38,25 +55,38 @@ SMODS.current_mod.optional_features = { retrigger_joker = true }
 ----------------------------------------------------------------
 -- ATLASES  (assets/1x/<file> and assets/2x/<file>, 71x95 per cell)
 ----------------------------------------------------------------
--- jokers.png:       sorted by rarity (common -> uncommon -> rare -> legendary)
---                   Common:    x=0 L3/33 | x=1 Crusader III
---                   Uncommon:  x=2 Coin Flip | x=3 Cursed Coin | x=4 Bonus Coin | x=5 Mako | x=6 Yukari
---                              x=7 Saori | x=8 Hana | x=9 Erika | x=10 Kay | x=11 Pepperoni | x=12 Nonna
---                   Rare:      x=13 Encrusted Arrow Head | x=14 Las Vegas | x=15 USS Wichita | x=16 Score Chains
---                              x=17 Russian Roulette | x=18 Printer | x=19 D20 | x=20 Miho | x=21 Maho
---                              x=22 Anchovy | x=23 Katyusha | x=24 Darjeeling | x=25 Rosehip
---                   Legendary: x=26 Povidone-Iodine Cookie | x=27 Mini Oreo | x=28 Maxwell | x=29 Mario & Luigi
---                   (the Girls und Panzer jokers, L3/33 and Crusader III included, are placeholder art)
+-- jokers.png:       EVERY Joker of the mod in one sheet, 71 cells, sorted by rarity (common -> uncommon -> rare -> legendary)
+--                   Common:    x=0 L3/33 | x=1 Crusader III | x=2 Fletcher
+--                   Uncommon:  x=3 Coin Flip | x=4 Cursed Coin | x=5 Bonus Coin | x=6 Mako | x=7 Yukari | x=8 Saori
+--                              x=9 Hana | x=10 Erika | x=11 Kay | x=12 Pepperoni | x=13 Nonna | x=14 Laffey
+--                              x=15 Daiwa Scarlet | x=16 Vodka | x=17 Gold Ship | x=18 Matikanetannhauser | x=19 Twin Turbo
+--                              x=20 Ikuno Dictus | x=21 Jungle Pocket | x=22 Meisho Doto | x=23 Rice Shower | x=24 Haru Urara
+--                   Rare:      x=25 Encrusted Arrow Head | x=26 Las Vegas | x=27 USS Wichita | x=28 Score Chains
+--                              x=29 Russian Roulette | x=30 Printer | x=31 D20 | x=32 Miho | x=33 Maho | x=34 Anchovy
+--                              x=35 Katyusha | x=36 Darjeeling | x=37 Rosehip | x=38 Backlash | x=39 Optimist | x=40 Clown Car
+--                              x=41 Enterprise | x=42 Yorktown | x=43 Hornet | x=44 New Jersey | x=45 North Carolina
+--                              x=46 Washington | x=47 Special Week | x=48 Silence Suzuka | x=49 Tokai Teio | x=50 Mejiro McQueen
+--                              x=51 Nice Nature | x=52 Agnes Tachyon | x=53 Manhattan Cafe | x=54 T.M Opera O
+--                              x=55 Matikanefukukitaru | x=56 Agnes Digital
+--                   Legendary: x=57 Povidone-Iodine Cookie | x=58 Mini Oreo | x=59 Maxwell | x=60 Mario & Luigi
+--                              x=61 Gacha Ticket
+--                              x=62 Ren (Joker) | x=63 Morgana (Mona) | x=64 Ryuji (Skull) | x=65 Ann (Panther)
+--                              x=66 Yusuke (Fox) | x=67 Makoto (Queen) | x=68 Futaba (Oracle) | x=69 Haru (Noir)
+--                              x=70 Kasumi (Violet)   (Phantom Thieves of Hearts, placeholder art)
+--                   (the Girls und Panzer and Uma Musume jokers are placeholder art)
+--                   A new Joker goes at the END of its rarity's block: insert its cell there and bump the pos.x of every
+--                   cell after it. The in-game collection follows the same order automatically (COLLECTION ORDER, bottom).
 SMODS.Atlas { key = "jokers",       path = "jokers.png",       px = 71, py = 95 }
 -- enhancements.png: x=0 Red Antiseptic | x=1 Meteor | x=2 Camo
 --                   (Meteor and Camo hide the normal card face, so they need full-card art)
 SMODS.Atlas { key = "enhancements", path = "enhancements.png", px = 71, py = 95 }
--- tarots.png:       x=0 Encrustation
+-- tarots.png:       x=0 Encrustation | x=1 Construction (EU) | x=2 US Industrial Power
 SMODS.Atlas { key = "tarots",       path = "tarots.png",       px = 71, py = 95 }
--- spectrals.png:    x=0 Omni-Box (a Tarot, but its art lives in this sheet) | x=1 @mini_oreo774 | x=2 @maxwellthegamer99
+-- spectrals.png:    x=4 Grey Ghost (azur.lua) | x=5 Calling Card, x=6 Phone a Friend (phantom.lua) | x=0 Omni-Box (a Tarot, but its art lives in this sheet) | x=1 @mini_oreo774 | x=2 @maxwellthegamer99
 --                   x=3 Warp Pipe (placeholder art)
 SMODS.Atlas { key = "spectrals",    path = "spectrals.png",    px = 71, py = 95 }
--- decks.png:        x=0 Mini Oreo's Deck | x=1 Maxwell's Deck
+-- decks.png:        x=0 Mini Oreo's Deck | x=1 Maxwell's Deck | x=2 Papa's Deck | x=3 Oreo RPG Deck | x=4 Map Deck
+--                   (one sheet for every deck, 5 cards wide: papas.lua, rpg.lua and map.lua use atlas "decks" too)
 SMODS.Atlas { key = "decks",        path = "decks.png",        px = 71, py = 95 }
 -- items.png:        x=0 Syrup | x=1 Super Syrup | x=2 Ultra Syrup | x=3 Max Syrup   (placeholder art)
 --                   x=4..12 weapons: Peashooter, Spread, Chaser, Lobber, Charge, Roundabout,
@@ -68,6 +98,14 @@ SMODS.Atlas { key = "boosters",     path = "boosters.png",     px = 71, py = 95 
 -- seals.png:        x=0 Bomb Seal | x=1 Snack Seal | x=2 Star Seal                   (placeholder art)
 --                   (seals are drawn over the card face, so keep the rest transparent)
 SMODS.Atlas { key = "seals",        path = "seals.png",        px = 71, py = 95 }
+-- blinds.png:       ONE animated sheet for every Blind (ANIMATION_ATLAS: 21 frames per row, 34x34 each,
+--                   one ROW per Blind, so a Blind picks its art with pos = { x = 0, y = <row> })
+--                   y=0 The Rush (papas.lua) | y=1 The Siren's Curse (azur.lua) | y=2 The Fleet Training (azur.lua)
+--                   (1x is 714x102, 2x is 1428x204)
+SMODS.Atlas {
+    key = "blinds", path = "blinds.png",
+    atlas_table = "ANIMATION_ATLAS", px = 34, py = 34, frames = 21,
+}
 
 ----------------------------------------------------------------
 -- HELPERS
@@ -564,7 +602,7 @@ SMODS.Enhancement {
 SMODS.Joker {
     key = "coin_flip",
     atlas = "jokers",
-    pos = { x = 2, y = 0 },
+    pos = { x = 3, y = 0 },
     rarity = 2,
     cost = 5,
     blueprint_compat = false,
@@ -585,7 +623,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "cursed_coin",
     atlas = "jokers",
-    pos = { x = 3, y = 0 },
+    pos = { x = 4, y = 0 },
     rarity = 2,
     cost = 4,
     blueprint_compat = false,
@@ -608,7 +646,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "encrusted_arrowhead",
     atlas = "jokers",
-    pos = { x = 13, y = 0 },
+    pos = { x = 25, y = 0 },
     rarity = 3, -- Rare
     cost = 8,
     blueprint_compat = true,
@@ -661,7 +699,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "las_vegas",
     atlas = "jokers",
-    pos = { x = 14, y = 0 },
+    pos = { x = 26, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = false,
@@ -697,7 +735,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "uss_wichita",
     atlas = "jokers",
-    pos = { x = 15, y = 0 },
+    pos = { x = 27, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = false,
@@ -788,7 +826,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "score_chains",
     atlas = "jokers",
-    pos = { x = 16, y = 0 },
+    pos = { x = 28, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = false,
@@ -808,7 +846,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "povidone_cookie",
     atlas = "jokers",
-    pos = { x = 26, y = 0 },
+    pos = { x = 57, y = 0 },
     rarity = 4, -- Legendary
     cost = 8,
     blueprint_compat = true,
@@ -876,7 +914,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "mini_oreo",
     atlas = "jokers",
-    pos = { x = 27, y = 0 },
+    pos = { x = 58, y = 0 },
     rarity = 4, -- Legendary
     cost = 20,
     blueprint_compat = true,
@@ -934,7 +972,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "maxwell",
     atlas = "jokers",
-    pos = { x = 28, y = 0 },
+    pos = { x = 59, y = 0 },
     rarity = 4, -- Legendary
     cost = 20,
     blueprint_compat = false,
@@ -1392,7 +1430,7 @@ end
 SMODS.Joker {
     key = "mario_luigi",
     atlas = "jokers",
-    pos = { x = 29, y = 0 },
+    pos = { x = 60, y = 0 },
     rarity = 4, -- Legendary
     cost = 20,
     blueprint_compat = false,
@@ -1491,7 +1529,7 @@ local ROULETTE_ODDS = 100
 SMODS.Joker {
     key = "russian_roulette",
     atlas = "jokers",
-    pos = { x = 17, y = 0 },
+    pos = { x = 29, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = false,
@@ -1538,7 +1576,7 @@ end
 SMODS.Joker {
     key = "bonus_coin",
     atlas = "jokers",
-    pos = { x = 4, y = 0 },
+    pos = { x = 5, y = 0 },
     rarity = 2,
     cost = 5,
     blueprint_compat = false,
@@ -1559,7 +1597,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "printer",
     atlas = "jokers",
-    pos = { x = 18, y = 0 },
+    pos = { x = 30, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = false,
@@ -1622,7 +1660,7 @@ SMODS.Joker {
 SMODS.Joker {
     key = "d20",
     atlas = "jokers",
-    pos = { x = 19, y = 0 },
+    pos = { x = 31, y = 0 },
     rarity = 3,
     cost = 8,
     blueprint_compat = false,
@@ -1925,16 +1963,25 @@ SMODS.Back {
     key = "mini_oreo_deck",
     atlas = "decks",
     pos = { x = 0, y = 0 },
-    config = { consumables = { "c_ocafe_mini_oreo774" } },
+    -- ante_scaling is what the Plasma Deck uses for its "X2 base Blind size"; this deck makes it X3
+    config = { consumables = { "c_ocafe_mini_oreo774" }, ante_scaling = 3 },
     loc_txt = {
         name = "Mini Oreo's Deck",
         text = {
             "Start with {C:attention}26{} cards:",
             "{C:attention}13{} {C:spades}Spades{} and {C:attention}13{} other cards",
             "Non-Spades become {C:attention}Meteor Cards",
-            "Start with an {C:spectral}@mini_oreo774"
+            "Start with an {C:spectral}@mini_oreo774",
+            "Balance {C:chips}Chips{} and {C:mult}Mult{} when scoring",
+            "{C:red}X3{} base Blind size"
         }
     },
+    -- Plasma Deck effect: once the played hand is fully scored, Chips and Mult are averaged
+    calculate = function(self, back, context)
+        if context.final_scoring_step then
+            return { balance = true }
+        end
+    end,
     apply = function(self, back)
         G.E_MANAGER:add_event(Event({
             func = function()
@@ -2604,11 +2651,94 @@ assert(SMODS.load_file("gup.lua"))()
 assert(SMODS.load_file("uma.lua"))()
 
 ----------------------------------------------------------------
+-- AZUR LANE: EAGLE UNION (azur.lua)
+----------------------------------------------------------------
+assert(SMODS.load_file("azur.lua"))()
+
+----------------------------------------------------------------
 -- NEGATIVE JOKER STACKING (stack.lua)
 ----------------------------------------------------------------
 assert(SMODS.load_file("stack.lua"))()
 
 ----------------------------------------------------------------
+-- GACHA TICKET (gacha.lua)
+----------------------------------------------------------------
+assert(SMODS.load_file("gacha.lua"))()
+
+----------------------------------------------------------------
+-- PHANTOM THIEVES OF HEARTS (phantom.lua): nine Legendary Jokers (their RPG kits are in rpg.lua)
+----------------------------------------------------------------
+assert(SMODS.load_file("phantom.lua"))()
+
+----------------------------------------------------------------
+-- PROBABILITY JOKERS (luck.lua) -- loaded after main.lua's Bonus/Cursed Coin hooks so it sees their failures
+----------------------------------------------------------------
+assert(SMODS.load_file("luck.lua"))()
+
+----------------------------------------------------------------
 -- PAPA'S COUNTER (papas.lua)
 ----------------------------------------------------------------
 assert(SMODS.load_file("papas.lua"))()
+
+----------------------------------------------------------------
+-- OREO RPG (rpg.lua) -- loaded after papas.lua so its shop tab can sit beside ORDERS
+----------------------------------------------------------------
+assert(SMODS.load_file("rpg.lua"))()
+
+----------------------------------------------------------------
+-- ARCADE GAMES (arcade.lua) -- loaded after rpg.lua so its shop tab can sit beside the others
+----------------------------------------------------------------
+assert(SMODS.load_file("arcade.lua"))()
+
+----------------------------------------------------------------
+-- MAP DECK (map.lua) -- loaded last: it builds on the kitchen (papas.lua) and the RPG (rpg.lua)
+----------------------------------------------------------------
+assert(SMODS.load_file("map.lua"))()
+
+----------------------------------------------------------------
+-- COLLECTION ORDER
+-- Every Joker of this mod is listed by rarity (Common, Uncommon, Rare, Legendary), and inside a rarity in the
+-- order of jokers.png (by x). The mod's Jokers keep the slots they already had in the Joker pool and only swap
+-- places among themselves, so other mods and the vanilla Jokers are not moved. Runs once, right after
+-- Steamodded has injected every object.
+----------------------------------------------------------------
+local function ocafe_sort_collection()
+    local pool = G.P_CENTER_POOLS and G.P_CENTER_POOLS.Joker
+    if not pool then return end
+
+    local slots, mine = {}, {}
+    for i, c in ipairs(pool) do
+        if type(c.key) == "string" and c.key:find("^j_ocafe_") then
+            slots[#slots + 1] = i
+            mine[#mine + 1] = { center = c, order = c.order, seq = #mine }
+        end
+    end
+    if #mine < 2 then return end
+
+    local function before(a, b)
+        local ca, cb = a.center, b.center
+        if (ca.rarity or 1) ~= (cb.rarity or 1) then return (ca.rarity or 1) < (cb.rarity or 1) end
+        local xa, xb = (ca.pos and ca.pos.x) or 0, (cb.pos and cb.pos.x) or 0
+        if xa ~= xb then return xa < xb end
+        return a.seq < b.seq
+    end
+
+    local orders = {}
+    for _, m in ipairs(mine) do orders[#orders + 1] = m.order or 0 end
+    table.sort(orders)
+    table.sort(mine, before)
+    for n, i in ipairs(slots) do
+        pool[i] = mine[n].center
+        mine[n].center.order = orders[n]   -- keep `order` in step in case something sorts by it later
+    end
+end
+
+if SMODS.injectItems then
+    local inject_items_ref = SMODS.injectItems
+    SMODS.injectItems = function(...)
+        local ret = inject_items_ref(...)
+        local ok, err = pcall(ocafe_sort_collection)
+        if not ok and sendWarnMessage then sendWarnMessage("ocafe: collection sort failed: " .. tostring(err), "OreoCafe") end
+        return ret
+    end
+end

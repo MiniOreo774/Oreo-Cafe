@@ -26,6 +26,17 @@
 --     ocafe_customers  customers on offer in the current shop
 --     ocafe_tickets    accepted orders being made this round
 --     ocafe_live       the round is running and the clocks are ticking
+--     ocafe_boss       The Rush boss is running: { goal, done, limit, left, seen, result }
+--     ocafe_quota      { ante, served } orders served this Ante (Papa's Deck)
+--   BOSS BLIND "The Rush" (bl_ocafe_rush, at the bottom of this file, art = blinds.png row y=0):
+--     The Blind brings BOSS_ORDERS orders at once. There is ONE clock for the whole Blind (the orders
+--     have no clock of their own), no order gives a reward, and serving the last one beats the Blind.
+--     The score requirement never ends the round, it only sets how much time a hand buys:
+--     every hand adds BOSS_SCORE_TIME seconds per 100% of the requirement it scores.
+--     Clock at zero = the run is over.
+--   PAPA'S DECK (b_ocafe_papas_deck, art = decks.png x=2): starts with the four vouchers above and every
+--     Ante has an order quota. Orders served in the Boss Blind don't count. If the quota is not met when
+--     the Boss Blind is beaten, the run ends.
 --   Art (optional): assets/1x/customers.png and assets/2x/customers.png, one 71x95 cell per outfit in
 --   the OUTFITS list below (x = 0 is Cowboy Jimbo...). Without it the vanilla Jimbo sprite is used.
 
@@ -57,6 +68,19 @@ local DINNER_RUSH_TIME = 0.7     -- Dinner Rush: every order's time budget x 0.7
 local DINNER_RUSH_REWARD = 1.5   -- Dinner Rush: every reward x 1.5
 local V_TIMER, V_AUTO = "v_ocafe_kitchen_timer", "v_ocafe_sous_chef"
 local V_PAD, V_RUSH = "v_ocafe_order_pad", "v_ocafe_dinner_rush"
+
+-- boss blind (The Rush)
+local BOSS_KEY = "bl_ocafe_rush"
+local BOSS_ORDERS = 10           -- orders to serve to beat the Blind
+local BOSS_BASE_TIME = 240       -- seconds on the one shared clock (tightened by the Ante, see ANTE_SQUEEZE)
+local BOSS_SCORE_TIME = 30       -- seconds a hand adds per 100% of the Blind's requirement it scores
+
+-- Papa's Deck
+local QUOTA_DECK_KEY = "b_ocafe_papas_deck"
+local QUOTA_GROWTH, QUOTA_MAX = 1.5, 12  -- quota = ceil(1.5 x Ante), at most 12 (Ante 1: 2, 4: 6, 6: 9, 8+: 12)
+-- an Ante whose Boss is The Rush has no shop for the Boss round: only the Small and Big shops give
+-- orders, so the quota there never asks for more than two shops can offer
+local RUSH_ANTE_MAX = 2 * ORDER_PAD_TAKEN
 
 -- reward kinds: weight = how often a customer offers it, base = amount (RUSH doubles it)
 local REWARDS = {
@@ -193,7 +217,7 @@ local GAME_ORDER = { "pizzeria", "scooperia", "donuteria", "cupcakeria", "freeze
 local K = {
     sel = 1,        -- ticket shown in the kitchen
     menu = nil,     -- the overlay that is the kitchen (so we can tell when it is open)
-    ui = { kitchen_label = "", kitchen_sub = "", bar = "", zone = "", orders_label = "" },
+    ui = { kitchen_label = "", kitchen_sub = "", bar = "", zone = "", orders_label = "", boss_line = "" },
 }
 
 local function kitchen_open()
@@ -266,6 +290,51 @@ local function any_open()
         if t.status == "open" then return true end
     end
     return false
+end
+
+-- Papa's Deck: is it the deck in use?
+local function quota_active()
+    local back = G.GAME and G.GAME.selected_back
+    local center = back and back.effect and back.effect.center
+    return center ~= nil and center.key == QUOTA_DECK_KEY
+end
+
+local function current_ante()
+    return (G.GAME and G.GAME.round_resets and G.GAME.round_resets.ante) or 1
+end
+
+local function order_quota(ante)
+    return math.min(QUOTA_MAX, math.ceil(QUOTA_GROWTH * ante))
+end
+
+-- orders served this Ante, and the quota for it
+local function quota_info()
+    local ante = current_ante()
+    local need = order_quota(ante)
+    local rr = G.GAME and G.GAME.round_resets
+    if rr and rr.blind_choices and rr.blind_choices.Boss == BOSS_KEY then
+        need = math.min(need, RUSH_ANTE_MAX)
+    end
+    local q = G.GAME and G.GAME.ocafe_quota
+    if not q or q.ante ~= ante then return 0, need end
+    return q.served, need
+end
+
+local function count_quota()
+    local ante = current_ante()
+    local q = G.GAME.ocafe_quota
+    if not q or q.ante ~= ante then
+        q = { ante = ante, served = 0 }
+        G.GAME.ocafe_quota = q
+    end
+    q.served = q.served + 1
+end
+
+-- the next Blind to play is The Rush (it brings its own orders, so the shop takes none)
+local function rush_next()
+    local rr = G.GAME and G.GAME.round_resets
+    return rr ~= nil and rr.blind_states ~= nil and rr.blind_states.Boss == "Select"
+        and rr.blind_choices ~= nil and rr.blind_choices.Boss == BOSS_KEY
 end
 
 local function option_name(step, id)
@@ -403,6 +472,84 @@ local function count_taken()
     return n
 end
 
+-- The Rush: BOSS_ORDERS orders at once, no reward, no clock per order, ONE clock for the whole Blind
+-- `challenge` ({ goal, secs }) turns this into a Map Deck Kitchen stop: fewer orders, and failing it
+-- only drops the orders (the Blind is then played by score)
+local function start_boss(challenge)
+    local g = G.GAME
+    local goal = challenge and challenge.goal or BOSS_ORDERS
+    local title = challenge and "KITCHEN CHALLENGE" or "THE RUSH"
+    local ante = current_ante()
+    local round = g.round or 0
+
+    local outfits = {}
+    for i = 1, #OUTFITS do outfits[i] = i end
+    shuffle(outfits, "ocafe_boss_outfits" .. round)
+
+    local list = {}
+    for i = 1, goal do
+        local game_key = GAME_ORDER[pseudorandom("ocafe_boss_game" .. round .. "_" .. i, 1, #GAME_ORDER)]
+        local c = make_customer(i, game_key, outfits[((i - 1) % #outfits) + 1], ante)
+        c.reward, c.budget = nil, nil
+        c.boss = true
+        c.accepted = true
+        c.status = "open"
+        c.step = 1
+        c.placed = {}
+        c.stack = {}
+        c.mistakes = 0
+        c.msg = "Follow the ticket, then SERVE!"
+        c.clock_text = "#" .. i
+        list[#list + 1] = c
+    end
+
+    local base = challenge and challenge.secs or BOSS_BASE_TIME
+    local secs = math.floor(base * math.max(MIN_TIME_FACTOR, 1 - ANTE_SQUEEZE * (ante - 1)))
+    g.ocafe_boss = { goal = goal, done = 0, limit = secs, left = secs, seen = g.chips or 0,
+        title = title, map = challenge and true or nil }
+    g.ocafe_tickets = list
+    g.ocafe_live = true
+    K.sel = 1
+    K.ui.boss_line = title .. "  -  0/" .. goal .. " served  -  " .. fmt_time(secs)
+
+    G.E_MANAGER:add_event(Event({
+        trigger = "after", delay = 0.8,
+        func = function()
+            safe(attention_text, {
+                text = title .. "! " .. goal .. " ORDERS", scale = 0.8, hold = 1.6,
+                align = "cm", offset = { x = 0, y = -2.5 }, major = G.play
+            })
+            play_sound("coin1", 1, 0.6)
+            return true
+        end
+    }))
+end
+
+-- the Blind was disabled (Chicot, Luchador): the orders vanish and the round plays by score again
+local function drop_boss()
+    local g = G.GAME
+    if not (g and g.ocafe_boss) then return end
+    g.ocafe_boss = nil
+    g.ocafe_tickets = nil
+    g.ocafe_live = nil
+    if kitchen_open() and G.FUNCS.exit_overlay_menu then G.FUNCS.exit_overlay_menu() end
+end
+
+OCAFE = OCAFE or {}
+function OCAFE.kitchen_challenge(goal, secs)
+    start_boss({ goal = goal, secs = secs })
+end
+
+-- a failed Map Deck challenge: the orders go away and the round carries on by score
+local function fail_challenge()
+    drop_boss()
+    if OCAFE.kitchen_failed then OCAFE.kitchen_failed() end
+    safe(attention_text, {
+        text = "CHALLENGE FAILED - beat the score!", scale = 0.7, hold = 2,
+        colour = G.C.RED, align = "cm", offset = { x = 0, y = -2.5 }, major = G.play
+    })
+end
+
 -- a Blind starts: the accepted orders become tickets and the clocks start
 local function start_orders(blind)
     local g = G.GAME
@@ -410,6 +557,11 @@ local function start_orders(blind)
     g.ocafe_customers = nil
     g.ocafe_tickets = nil
     g.ocafe_live = nil
+    g.ocafe_boss = nil
+    if blind and blind.key == BOSS_KEY then
+        start_boss()
+        return
+    end
     if not offered then return end
 
     local scale = 1
@@ -459,15 +611,22 @@ local function close_orders()
     for _, t in ipairs(g.ocafe_tickets) do
         if t.status == "served" then served = served + 1 end
     end
+    local was_boss = g.ocafe_boss ~= nil
     g.ocafe_tickets = nil
     g.ocafe_live = nil
+    g.ocafe_boss = nil
     if kitchen_open() and G.FUNCS.exit_overlay_menu then G.FUNCS.exit_overlay_menu() end
     if total > 0 then
+        local text = "Orders served: " .. served .. "/" .. total
+        if quota_active() and not was_boss then
+            local s, q = quota_info()
+            text = text .. "   Quota: " .. s .. "/" .. q
+        end
         G.E_MANAGER:add_event(Event({
             trigger = "after", delay = 0.4,
             func = function()
                 safe(attention_text, {
-                    text = "Orders served: " .. served .. "/" .. total, scale = 0.7, hold = 1.6,
+                    text = text, scale = 0.7, hold = 1.6,
                     align = "cm", offset = { x = 0, y = -2.5 }, major = G.play
                 })
                 return true
@@ -482,6 +641,38 @@ local function expire(t)
     t.clock_text = "LEFT"
     t.msg = "Out of time! The customer left."
     play_sound("cancel", 0.8, 0.6)
+end
+
+-- The Rush: the clock hit zero. Every open order fails; the run ends the next time the game is calm.
+local function boss_fail()
+    local b = G.GAME.ocafe_boss
+    if not b or b.result then return end
+    b.result = "lost"
+    b.left = 0
+    for _, t in ipairs(tickets()) do
+        if t.status == "open" then
+            t.status = "failed"
+            t.station = nil
+            t.clock_text = "LEFT"
+            t.msg = "Time's up! The rush is over."
+        end
+    end
+    play_sound("cancel", 0.8, 0.6)
+end
+
+-- lose seconds (a wrong ingredient, a burnt batch); returns true when the time is up
+local function lose_time(t, secs)
+    local b = G.GAME.ocafe_boss
+    if t.boss and b then
+        b.left = b.left - secs
+        return b.left <= 0
+    end
+    t.left = t.left - secs
+    return t.left <= 0
+end
+
+local function time_up(t)
+    if t.boss then boss_fail() else expire(t) end
 end
 
 local function advance(t)
@@ -705,7 +896,7 @@ local function customer_button(i, c, full, btn_w, label_scale)
     if c.accepted then
         label, colour, button = "TAKEN", G.C.GREEN, "ocafe_toggle_order"
     elseif full then
-        label, colour, button = "FULL", G.C.UI.BACKGROUND_INACTIVE, nil
+        label, colour, button = (full == "boss") and "CLOSED" or "FULL", G.C.UI.BACKGROUND_INACTIVE, nil
     else
         label, colour, button = "TAKE ORDER", G.C.BLUE, "ocafe_toggle_order"
     end
@@ -776,8 +967,18 @@ local function orders_body()
         append_all(rows, wrap_rows("Serve before the clock runs out for the reward. Half the time left = RUSH = double!", 0.27, G.C.UI.TEXT_INACTIVE, "cm", 9.6))
     end
     rows[#rows + 1] = row("Orders taken: " .. taken .. " / " .. taken_limit(), 0.34, G.C.GOLD)
+    if quota_active() then
+        local s, q = quota_info()
+        rows[#rows + 1] = row("Ante " .. current_ante() .. " quota: " .. s .. " / " .. q
+            .. " served  (Boss orders don't count)", compact and 0.26 or 0.28, G.C.ORANGE, "cm", 9.6)
+    end
+    local locked = rush_next()
+    if locked then
+        append_all(rows, wrap_rows("The next Blind is THE RUSH. It brings its own orders, so none can be taken now.",
+            0.27, G.C.RED, "cm", 9.6))
+    end
     for i, c in ipairs(list) do
-        rows[#rows + 1] = customer_row(i, c, taken >= taken_limit(), compact)
+        rows[#rows + 1] = customer_row(i, c, locked and "boss" or (taken >= taken_limit()), compact)
     end
     return { n = G.UIT.C, config = { align = "cm", padding = compact and 0.03 or 0.06 }, nodes = rows }
 end
@@ -836,6 +1037,10 @@ end
 -- 3 customers"), so the pieces can never overlap, and maxw shrinks the text if it ever gets too long.
 local function orders_label()
     local list = (G.GAME and G.GAME.ocafe_customers) or {}
+    if quota_active() then
+        local s, q = quota_info()
+        return "ORDERS - " .. count_taken() .. " taken - quota " .. s .. "/" .. q
+    end
     return "ORDERS - " .. count_taken() .. " taken - " .. #list .. (#list == 1 and " customer" or " customers")
 end
 
@@ -843,7 +1048,7 @@ G.FUNCS.ocafe_orders_btn = function(e)
     K.ui.orders_label = orders_label()
 end
 
-local TAB_W = 4.6   -- width of the tab in the shop box
+local TAB_W = 3.8   -- width of the tab in the shop box
 
 local function orders_tab()
     K.ui.orders_label = orders_label()
@@ -980,8 +1185,13 @@ local function ticket_panel(ti, t)
         } },
     }
     for _, r in ipairs(receipt_rows(t)) do left[#left + 1] = r end
-    left[#left + 1] = row("Reward: " .. reward_text(t.reward, false), 0.27, G.C.GOLD, "cl")
-    left[#left + 1] = row("RUSH (half time left): " .. reward_text(t.reward, true), 0.25, G.C.GOLD, "cl")
+    if t.boss then
+        left[#left + 1] = row("No reward. Every order served", 0.25, G.C.GOLD, "cl", 5)
+        left[#left + 1] = row("counts toward beating the Blind.", 0.25, G.C.GOLD, "cl", 5)
+    else
+        left[#left + 1] = row("Reward: " .. reward_text(t.reward, false), 0.27, G.C.GOLD, "cl")
+        left[#left + 1] = row("RUSH (half time left): " .. reward_text(t.reward, true), 0.25, G.C.GOLD, "cl")
+    end
 
     return { n = G.UIT.R, config = { align = "cm", padding = 0.06 }, nodes = {
         { n = G.UIT.C, config = { align = "tl", padding = 0.1, r = 0.1, colour = G.C.L_BLACK, minw = 5.4, minh = 4 }, nodes = left },
@@ -997,6 +1207,17 @@ local function ticket_tab(i, t)
         colour = G.C.RED
     else
         colour = (i == K.sel) and G.C.BLUE or G.C.GREY
+    end
+    if t.boss then
+        -- small tabs, no clock: the Blind has one clock for everything
+        return { n = G.UIT.C, config = { align = "cm", padding = 0.04 }, nodes = {
+            { n = G.UIT.C, config = {
+                align = "cm", padding = 0.05, minw = 1.6, r = 0.1, hover = true, shadow = true,
+                colour = colour, button = "ocafe_select_ticket", ref_table = { ti = i }
+            }, nodes = {
+                row("#" .. i .. " " .. GAMES[t.game].short, 0.24, G.C.WHITE, "cm", 1.5)
+            } }
+        } }
     end
     return { n = G.UIT.C, config = { align = "cm", padding = 0.06 }, nodes = {
         { n = G.UIT.C, config = {
@@ -1018,11 +1239,25 @@ local function kitchen_body()
     if not list[K.sel] then K.sel = 1 end
     g.chips_text = g.chips_text or number_format(g.chips)
 
-    local rail = {}
-    for i, t in ipairs(list) do rail[#rail + 1] = ticket_tab(i, t) end
+    -- the Boss has many tickets: five tabs per row
+    local rail_rows = {}
+    if list[1] and list[1].boss then
+        local cur
+        for i, t in ipairs(list) do
+            if (i - 1) % 5 == 0 then
+                cur = { n = G.UIT.R, config = { align = "cm", padding = 0.01 }, nodes = {} }
+                rail_rows[#rail_rows + 1] = cur
+            end
+            cur.nodes[#cur.nodes + 1] = ticket_tab(i, t)
+        end
+    else
+        local rail = {}
+        for i, t in ipairs(list) do rail[#rail + 1] = ticket_tab(i, t) end
+        rail_rows[1] = { n = G.UIT.R, config = { align = "cm", padding = 0.02 }, nodes = rail }
+    end
 
-    return { n = G.UIT.C, config = { align = "cm", padding = 0.04 }, nodes = {
-        row("THE KITCHEN", 0.55, G.C.WHITE),
+    local nodes = {
+        row(g.ocafe_boss and (g.ocafe_boss.title or "THE RUSH") or "THE KITCHEN", 0.55, G.C.WHITE),
         { n = G.UIT.R, config = { align = "cm", padding = 0.03 }, nodes = {
             { n = G.UIT.T, config = { text = "Hands ", scale = 0.3, colour = G.C.UI.TEXT_INACTIVE, shadow = true } },
             { n = G.UIT.T, config = { ref_table = g.current_round, ref_value = "hands_left", scale = 0.3, colour = G.C.BLUE, shadow = true } },
@@ -1032,9 +1267,18 @@ local function kitchen_body()
             { n = G.UIT.T, config = { ref_table = g, ref_value = "chips_text", scale = 0.3, colour = G.C.WHITE, shadow = true } },
             { n = G.UIT.T, config = { text = " / " .. number_format((g.blind and g.blind.chips) or 0), scale = 0.3, colour = G.C.UI.TEXT_INACTIVE, shadow = true } },
         } },
-        { n = G.UIT.R, config = { align = "cm", padding = 0.02 }, nodes = rail },
-        ticket_panel(K.sel, list[K.sel]),
-    } }
+    }
+    if g.ocafe_boss then
+        nodes[#nodes + 1] = { n = G.UIT.R, config = { align = "cm", padding = 0.03 }, nodes = {
+            { n = G.UIT.T, config = { ref_table = K.ui, ref_value = "boss_line", scale = 0.36, colour = G.C.GOLD, shadow = true } }
+        } }
+    elseif quota_active() then
+        local s, q = quota_info()
+        nodes[#nodes + 1] = row("Ante " .. current_ante() .. " quota: " .. s .. " / " .. q .. " orders served", 0.28, G.C.ORANGE)
+    end
+    for _, r in ipairs(rail_rows) do nodes[#nodes + 1] = r end
+    nodes[#nodes + 1] = ticket_panel(K.sel, list[K.sel])
+    return { n = G.UIT.C, config = { align = "cm", padding = 0.04 }, nodes = nodes }
 end
 
 -- rebuild the kitchen contents (from a tick: right away; from a button: next frame)
@@ -1083,10 +1327,10 @@ G.FUNCS.ocafe_pick = function(e)
         if #t.placed >= #want then advance(t) end
     else
         t.mistakes = t.mistakes + 1
-        t.left = t.left - MISTAKE_COST
+        local out = lose_time(t, MISTAKE_COST)
         t.msg = "Wrong ingredient! -" .. MISTAKE_COST .. "s"
         play_sound("cancel", 1, 0.6)
-        if t.left <= 0 then expire(t) end
+        if out then time_up(t) end
     end
     K.refresh_later()
 end
@@ -1113,10 +1357,10 @@ G.FUNCS.ocafe_station_stop = function(e)
     local quality = quality_of(zone)
     t.station = nil
     if quality == "ruined" then
-        t.left = t.left - RUIN_COST
+        local out = lose_time(t, RUIN_COST)
         t.msg = ((zone == "raw") and "Still raw!" or "Burnt!") .. " Start over (-" .. RUIN_COST .. "s)"
         play_sound("cancel", 1, 0.6)
-        if t.left <= 0 then expire(t) end
+        if out then time_up(t) end
     else
         finish_station(t, step, quality, false)
     end
@@ -1127,6 +1371,33 @@ G.FUNCS.ocafe_serve = function(e)
     local t = get_ticket(e)
     if not (t and t.status == "open") then return end
     if t.step <= #GAMES[t.game].steps then return end
+
+    -- The Rush: no reward, no clock of its own. Every order counts toward the Blind.
+    if t.boss then
+        local b = G.GAME.ocafe_boss
+        if not b or b.result then return end
+        t.status = "served"
+        t.clock_text = "SERVED"
+        b.done = b.done + 1
+        t.msg = "Served! " .. b.done .. "/" .. b.goal
+        play_sound("coin3", 1, 0.7)
+        if b.done >= b.goal then
+            b.result = "won"
+        else
+            -- jump to the next order that is still open
+            local list = tickets()
+            for step = 1, #list do
+                local i = ((K.sel - 1 + step) % #list) + 1
+                if list[i].status == "open" then
+                    K.sel = i
+                    break
+                end
+            end
+        end
+        K.refresh_later()
+        return
+    end
+
     if t.left <= 0 then
         expire(t)
         K.refresh_later()
@@ -1137,6 +1408,7 @@ G.FUNCS.ocafe_serve = function(e)
     t.status = "served"
     t.rush = rush
     t.clock_text = rush and "RUSH!" or "SERVED"
+    if quota_active() then count_quota() end
     t.msg = (rush and "RUSH! " or "Served! ") .. pay_reward(t, rush)
     play_sound("coin3", 1, 0.7)
     if rush then play_sound("multhit2", 1.1, 0.7) end
@@ -1201,16 +1473,20 @@ end
 ----------------------------------------------------------------
 local function update_labels()
     local open, soonest, ready = 0, nil, false
+    local boss = G.GAME and G.GAME.ocafe_boss
     if G.GAME and G.GAME.ocafe_live then
         for _, t in ipairs(tickets()) do
             if t.status == "open" then
                 open = open + 1
-                soonest = soonest and math.min(soonest, t.left) or t.left
+                if not t.boss then soonest = soonest and math.min(soonest, t.left) or t.left end
                 if t.station and t.station.alerted then ready = true end
             end
         end
     end
-    if open > 0 then
+    if boss and open > 0 then
+        K.ui.kitchen_label = ready and "KITCHEN - READY!" or "KITCHEN"
+        K.ui.kitchen_sub = boss.done .. "/" .. boss.goal .. " served - " .. fmt_time(boss.left)
+    elseif open > 0 then
         K.ui.kitchen_label = ready and "KITCHEN - READY!" or "KITCHEN"
         K.ui.kitchen_sub = open .. plural(open, " order - ", " orders - ") .. fmt_time(soonest)
     else
@@ -1228,9 +1504,10 @@ local function tick(dt)
     dt = math.min(dt, 0.1)
 
     local changed = false
+    local boss = g.ocafe_boss
     for _, t in ipairs(g.ocafe_tickets) do
         if t.status == "open" then
-            t.left = t.left - dt
+            if not t.boss then t.left = t.left - dt end
             if t.station then
                 local step = GAMES[t.game].steps[t.step]
                 t.station.p = t.station.p + dt / ((step and step.dur) or 4)
@@ -1248,19 +1525,38 @@ local function tick(dt)
                 if t.station.p > MAXP then
                     -- left it in the oven too long
                     t.station = nil
-                    t.left = t.left - RUIN_COST
+                    local out = lose_time(t, RUIN_COST)
                     t.msg = "Burnt! Start over (-" .. RUIN_COST .. "s)"
                     play_sound("cancel", 1, 0.6)
                     changed = true
+                    if out then time_up(t) end
                 end
             end
-            if t.left <= 0 then
-                expire(t)
-                changed = true
-            else
-                t.clock_text = fmt_time(t.left)
+            if not t.boss then
+                if t.left <= 0 then
+                    expire(t)
+                    changed = true
+                else
+                    t.clock_text = fmt_time(t.left)
+                end
             end
         end
+    end
+
+    -- The Rush: one clock for the whole Blind. Score buys time, in proportion to the requirement.
+    if boss and not boss.result then
+        boss.left = boss.left - dt
+        local chips = g.chips or 0
+        if type(chips) == "number" and type(boss.seen) == "number" and chips > boss.seen then
+            local need = math.max(1, (g.blind and g.blind.chips) or 1)
+            boss.left = boss.left + (chips - boss.seen) / need * BOSS_SCORE_TIME
+        end
+        boss.seen = chips
+        if boss.left <= 0 then
+            boss_fail()
+            changed = true
+        end
+        K.ui.boss_line = (boss.title or "THE RUSH") .. "  -  " .. boss.done .. "/" .. boss.goal .. " served  -  " .. fmt_time(boss.left)
     end
 
     refresh_station_ui(g.ocafe_tickets[K.sel])
@@ -1293,8 +1589,108 @@ if type(end_round) == "function" then
     local end_round_ref = end_round
     end_round = function(...)
         safe(close_orders)
+
+        -- Papa's Deck: the Boss Blind was beaten, but the Ante's order quota wasn't met
+        local blind = G.GAME and G.GAME.blind
+        if quota_active() and blind and blind.boss and (G.GAME.chips or 0) >= (blind.chips or 0) then
+            local served, need = quota_info()
+            if served < need then
+                G.E_MANAGER:add_event(Event({
+                    trigger = "after", delay = 0.3,
+                    func = function()
+                        safe(attention_text, {
+                            text = "QUOTA NOT MET: " .. served .. "/" .. need, scale = 0.9, hold = 2.2,
+                            colour = G.C.RED, align = "cm", offset = { x = 0, y = -2.5 }, major = G.play
+                        })
+                        play_sound("cancel", 0.8, 0.8)
+                        return true
+                    end
+                }))
+                G.E_MANAGER:add_event(Event({
+                    trigger = "after", delay = 2.4,
+                    func = function()
+                        G.STATE = G.STATES.GAME_OVER
+                        G.STATE_COMPLETE = false
+                        return true
+                    end
+                }))
+                return
+            end
+        end
+
         return end_round_ref(...)
     end
+end
+
+-- The Rush: the score requirement never ends the round (only the orders, or the clock, do).
+-- The game decides "round over" in update_new_round, so the cancel happens there: back to drawing.
+if Game.update_new_round then
+    local new_round_ref = Game.update_new_round
+    function Game:update_new_round(dt, ...)
+        local boss = G.GAME and G.GAME.ocafe_boss
+        if boss and boss.map and boss.result == "lost" and not G.STATE_COMPLETE then
+            fail_challenge() -- the normal rules decide how this round ends
+        elseif boss and not G.STATE_COMPLETE then
+            if not boss.result then
+                G.STATE = G.STATES.DRAW_TO_HAND
+                G.STATE_COMPLETE = false
+                return
+            elseif boss.result == "lost" then
+                -- the clock ran out during the hand: even a high score can't save the run now
+                boss.result = "dead"
+                G.STATE = G.STATES.GAME_OVER
+                G.STATE_COMPLETE = false
+                return
+            end
+        end
+        return new_round_ref(self, dt, ...)
+    end
+end
+
+-- with no hands left in The Rush the player can still cook, but not play
+if G.FUNCS.can_play then
+    local can_play_ref = G.FUNCS.can_play
+    G.FUNCS.can_play = function(e)
+        can_play_ref(e)
+        local b = G.GAME and G.GAME.ocafe_boss
+        if b and not b.result and ((G.GAME.current_round and G.GAME.current_round.hands_left) or 0) < 1 then
+            e.config.colour = G.C.UI.BACKGROUND_INACTIVE
+            e.config.button = nil
+        end
+    end
+end
+
+-- The Rush is over: all orders served = the Blind is beaten, clock at zero = the run is over.
+-- Both wait for a calm moment (choosing a hand) so scoring events can't undo them.
+local rush_update_ref = Game.update
+function Game:update(dt, ...)
+    local g = G and G.GAME
+    local boss = g and G.STAGE == G.STAGES.RUN and g.ocafe_boss
+    if boss and boss.result and boss.result ~= "done" and boss.result ~= "dead"
+        and G.STATE == G.STATES.SELECTING_HAND then
+        if kitchen_open() and G.FUNCS.exit_overlay_menu then G.FUNCS.exit_overlay_menu() end
+        if G.hand then G.hand:unhighlight_all() end
+        if boss.map and boss.result == "lost" then
+            fail_challenge()
+            -- already past the score, or out of hands: end the round under the normal rules
+            if (g.chips or 0) >= ((g.blind and g.blind.chips) or 0)
+                or ((g.current_round and g.current_round.hands_left) or 0) < 1 then
+                G.STATE = G.STATES.NEW_ROUND
+                G.STATE_COMPLETE = false
+            end
+        elseif boss.result == "won" then
+            boss.result = "done"
+            g.chips = math.max(g.chips or 0, (g.blind and g.blind.chips) or 0)
+            g.chips_text = number_format(g.chips)
+            G.STATE = G.STATES.NEW_ROUND
+            G.STATE_COMPLETE = false
+        else
+            boss.result = "dead"
+            G.STATE = G.STATES.GAME_OVER
+            G.STATE_COMPLETE = false
+        end
+    end
+    return rush_update_ref(self, dt, ...)
 end
 
 -- every hand you play makes the customers wait a little longer
@@ -1302,8 +1698,9 @@ if G.FUNCS.play_cards_from_highlighted then
     local play_ref = G.FUNCS.play_cards_from_highlighted
     G.FUNCS.play_cards_from_highlighted = function(e)
         if G.GAME and G.GAME.ocafe_live and G.hand and #G.hand.highlighted > 0 then
+            -- (The Rush has no per-order clocks: its hands add time through their score, see tick)
             for _, t in ipairs(tickets()) do
-                if t.status == "open" then
+                if t.status == "open" and not t.boss then
                     t.limit = t.limit + HAND_PATIENCE
                     t.left = t.left + HAND_PATIENCE
                 end
@@ -1333,6 +1730,7 @@ end
 -- cards). The shop box is the outermost column on the way to the Next Round button that stacks
 -- several rows; if the layout isn't recognised, the first column under the root is used.
 local function add_orders_tab(t)
+    if OCAFE.map_active and OCAFE.map_active() then return end -- the Map Deck has no ORDERS tab
     local path = find_path(t, "next_round_button", {})
     if not path then return end
     local box
@@ -1362,7 +1760,8 @@ function Game:update(dt, ...)
     local ret = update_ref(self, dt, ...)
     local shop = G and G.shop
     local off = shop and shop.alignment and shop.alignment.offset
-    if off and type(off.y) == "number" and math.abs(off.y - VANILLA_SHOP_Y) < 0.001 then
+    if off and not (OCAFE.map_active and G.GAME and OCAFE.map_active())
+        and type(off.y) == "number" and math.abs(off.y - VANILLA_SHOP_Y) < 0.001 then
         off.y = VANILLA_SHOP_Y - SHOP_LIFT
     end
     return ret
@@ -1439,6 +1838,7 @@ SMODS.Voucher {
 
 SMODS.Voucher {
     key = "order_pad",
+    in_pool = function() return not (OCAFE.map_active and OCAFE.map_active()) end,
     atlas = "vouchers", pos = { x = 2, y = 0 },
     cost = 10,
     config = { extra = { orders = ORDER_PAD_TAKEN } },
@@ -1459,6 +1859,7 @@ SMODS.Voucher {
 
 SMODS.Voucher {
     key = "dinner_rush",
+    in_pool = function() return not (OCAFE.map_active and OCAFE.map_active()) end,
     atlas = "vouchers", pos = { x = 3, y = 0 },
     cost = 10,
     requires = { V_PAD },
@@ -1473,6 +1874,56 @@ SMODS.Voucher {
             "All orders have {C:attention}#1#%{} less time,",
             "but all order rewards",
             "are {C:attention}X#2#{} bigger",
+        },
+    },
+}
+
+----------------------------------------------------------------
+-- BOSS BLIND: THE RUSH
+-- Built like the vanilla Boss Blinds: a "The ..." name, a two line description, a colour for the
+-- background, an animated 34x34 chip (21 frames, row y=0 of the shared assets/1x/blinds.png declared in main.lua), the
+-- usual 2X requirement and $5 payout. It can show up from Ante 2.
+-- The rules live in the clock, tick and Game:update code above.
+----------------------------------------------------------------
+SMODS.Blind {
+    key = "rush",
+    atlas = "blinds",   -- the shared sheet declared in main.lua (row y=0 is The Rush)
+    pos = { x = 0, y = 0 },
+    boss = { min = 2 },
+    boss_colour = HEX("D9792B"),
+    mult = 2,
+    dollars = 5,
+    loc_txt = {
+        name = "The Rush",
+        text = {
+            "Serve " .. BOSS_ORDERS .. " orders before the",
+            "clock runs out",
+        },
+    },
+    -- Chicot / Luchador: the orders vanish and the Blind is played by score
+    disable = function(self)
+        drop_boss()
+    end,
+}
+
+----------------------------------------------------------------
+-- PAPA'S DECK
+-- Starts with the four vouchers (the Back's `vouchers` list redeems them at the start of the run).
+-- The order quota is checked in the end_round hook above.
+----------------------------------------------------------------
+SMODS.Back {
+    key = "papas_deck",
+    atlas = "decks",   -- the shared deck sheet declared in main.lua (x=2 is Papa's Deck)
+    pos = { x = 2, y = 0 },
+    config = { vouchers = { V_TIMER, V_AUTO, V_PAD, V_RUSH } },
+    loc_txt = {
+        name = "Papa's Deck",
+        text = {
+            "Start with {C:attention}Kitchen Timer{}, {C:attention}Sous Chef{},",
+            "{C:attention}Order Pad{} and {C:attention}Dinner Rush",
+            "Each Ante has an {C:attention}order quota{}",
+            "(" .. order_quota(1) .. " rising to " .. QUOTA_MAX .. "), miss it before the",
+            "{C:attention}Boss Blind{} ends and the run is {C:red}over",
         },
     },
 }
